@@ -1,0 +1,2 @@
+GET     /test    com.eyeem.controllers.ThumbnailController.test
+GET     /relay   com.eyeem.controllers.ThumbnailController.relay
