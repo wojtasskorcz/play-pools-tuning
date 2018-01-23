@@ -15,8 +15,14 @@ class ThumbnailController(val controllerComponents: ControllerComponents, ws: WS
   }
 
   def relay() = Action.async {
+    val t0 = System.currentTimeMillis()
     val response = ws.url("http://localhost:9001/test").get()
 
-    response.map(r => Ok("relayed: " + r.body))
+    response.map { r =>
+      Thread.sleep(100)
+      val t1 = System.currentTimeMillis()
+//      logger.info(s"response time ${t1 - t0}ms")
+      Ok("relayed: " + r.body)
+    }
   }
 }

@@ -4,7 +4,6 @@ import java.util.concurrent._
 
 import akka.dispatch._
 import com.typesafe.config.Config
-import com.typesafe.scalalogging.LazyLogging
 
 import scala.concurrent.duration.Duration
 
@@ -133,18 +132,4 @@ final case class InstrumentedThreadPoolConfig(
     new InstrumentedThreadPoolExecutorServiceFactory(tf)
   }
 
-}
-
-
-
-class InstrumentedThreadPoolExecutor(corePoolSize: Int, maximumPoolSize: Int, keepAliveTime: Long, unit: TimeUnit,
-                                     workQueue: BlockingQueue[Runnable], threadFactory: ThreadFactory,
-                                     handler: RejectedExecutionHandler)
-  extends ThreadPoolExecutor(corePoolSize, maximumPoolSize, keepAliveTime, unit, workQueue, threadFactory, handler)
-  with LazyLogging {
-
-  override def beforeExecute(t: Thread, r: Runnable) = {
-    super.beforeExecute(t, r)
-    logger.info("beforeExecute")
-  }
 }

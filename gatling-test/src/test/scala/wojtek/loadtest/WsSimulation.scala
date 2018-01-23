@@ -38,5 +38,5 @@ class AsyncSimulation extends Simulation {
       .get("/relay")
       .check(status is 200))
 
-  setUp(scn.inject(constantUsersPerSec(3) during(20 seconds)).protocols(httpConf))
+  setUp(scn.inject(constantUsersPerSec(8) during(10 seconds)).protocols(httpConf))
 }
