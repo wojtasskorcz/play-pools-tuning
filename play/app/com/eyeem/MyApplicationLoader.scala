@@ -1,6 +1,9 @@
 package com.eyeem
 
+import java.sql.DriverManager
+
 import com.eyeem.controllers.ThumbnailController
+import org.h2.tools.Server
 import play.api.ApplicationLoader.Context
 import play.api.libs.ws.ahc.AhcWSComponents
 import play.api.{ApplicationLoader, BuiltInComponentsFromContext, LoggerConfigurator}
@@ -13,6 +16,17 @@ class MyApplicationLoader extends ApplicationLoader {
     LoggerConfigurator(context.environment.classLoader).foreach {
       _.configure(context.environment, context.initialConfiguration, Map.empty)
     }
+
+    val server = Server.createTcpServer("-tcpAllowOthers").start()
+    Class.forName("org.h2.Driver")
+    val conn = DriverManager.getConnection("jdbc:h2:tcp://localhost/~/metrics", "sa", "")
+//    conn.prepareStatement("drop table threads;").execute()
+    conn.prepareStatement("drop all objects").execute()
+    conn.prepareStatement("create table threads (id int not null auto_increment, duration bigint, primary key (id));").execute()
+//    conn.prepareStatement("insert into threads values (1, 999)").execute()
+//    val res = conn.prepareStatement("select * from threads").executeQuery()
+//    System.out.println(res)
+
     new MyComponents(context).application
   }
 
