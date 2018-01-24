@@ -1,6 +1,6 @@
 package com.eyeem
 
-import java.sql.DriverManager
+import java.sql.{DriverManager, Timestamp}
 import java.util.concurrent._
 
 import com.typesafe.scalalogging.LazyLogging
@@ -22,8 +22,9 @@ class InstrumentedThreadPoolExecutor(corePoolSize: Int, maximumPoolSize: Int, ke
   override def afterExecute(r: Runnable, t: Throwable): Unit = {
     super.afterExecute(r, t)
     val duration = System.nanoTime() - startTime.get()
+    val finishedAt = new Timestamp(System.currentTimeMillis())
     val conn = DriverManager.getConnection("jdbc:h2:tcp://localhost/~/metrics", "sa", "")
-    conn.prepareStatement(s"insert into threads (duration) values ($duration)").execute()
+    conn.prepareStatement(s"insert into threads (finished_at, duration) values ('$finishedAt', $duration)").execute()
     logger.info(System.currentTimeMillis() + " afterExecute took " + duration + "ns")
   }
 

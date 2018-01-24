@@ -22,7 +22,7 @@ class MyApplicationLoader extends ApplicationLoader {
     val conn = DriverManager.getConnection("jdbc:h2:tcp://localhost/~/metrics", "sa", "")
 //    conn.prepareStatement("drop table threads;").execute()
     conn.prepareStatement("drop all objects").execute()
-    conn.prepareStatement("create table threads (id int not null auto_increment, duration bigint, primary key (id));").execute()
+    conn.prepareStatement("create table threads (id int not null auto_increment, finished_at timestamp, duration bigint, primary key (id));").execute()
 //    conn.prepareStatement("insert into threads values (1, 999)").execute()
 //    val res = conn.prepareStatement("select * from threads").executeQuery()
 //    System.out.println(res)

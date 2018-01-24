@@ -8,11 +8,11 @@ try:
   curs = conn.cursor()
   print('successfully connected')
   # Fetch the last 10 timestamps
-  curs.execute("SELECT duration FROM threads ORDER BY id DESC LIMIT 10")
+  curs.execute("SELECT finished_at, duration FROM threads ORDER BY id DESC LIMIT 10")
   for value in curs.fetchall():
     # the values are returned as wrapped java.lang.Long instances
     # invoke the toString() method to print them
-    print(value[0].toString())
+    print(value[0] + ' ' + value[1].toString())
 
 finally:
   if curs is not None:
