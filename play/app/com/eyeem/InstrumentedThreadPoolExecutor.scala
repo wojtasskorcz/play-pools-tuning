@@ -21,11 +21,11 @@ class InstrumentedThreadPoolExecutor(corePoolSize: Int, maximumPoolSize: Int, ke
 
   override def afterExecute(r: Runnable, t: Throwable): Unit = {
     super.afterExecute(r, t)
-    val duration = System.nanoTime() - startTime.get()
+    val durationMicro = (System.nanoTime() - startTime.get()) / 1000
     val finishedAt = new Timestamp(System.currentTimeMillis())
     val conn = DriverManager.getConnection("jdbc:h2:tcp://localhost/~/metrics", "sa", "")
-    conn.prepareStatement(s"insert into threads (finished_at, duration) values ('$finishedAt', $duration)").execute()
-    logger.info(System.currentTimeMillis() + " afterExecute took " + duration + "ns")
+    conn.prepareStatement(s"insert into threads (finished_at, duration_micro) values ('$finishedAt', $durationMicro)").execute()
+    logger.info(System.currentTimeMillis() + " afterExecute took " + durationMicro + "us")
   }
 
 //  override def execute(command: Runnable) = {
