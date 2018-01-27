@@ -20,7 +20,8 @@ try:
     startTime = endTime - delta
     print(str(startTime) + ' ' + str(endTime))
 
-    curs.execute("SELECT finished_at, duration_micro FROM threads where finished_at >= '" + str(startTime) + "' ORDER BY finished_at asc LIMIT 10")
+    curs.execute("SELECT finished_at, duration_micro FROM threads where finished_at >= '" + str(startTime) + "' ORDER BY finished_at asc")
+    totalDurationMicro = 0
     for value in curs.fetchall():
       finishedAt = datetime.strptime(value[0], '%Y-%m-%d %H:%M:%S.%f')
       durationMicro = value[1]
@@ -28,8 +29,11 @@ try:
       capDelta = min(finishedAt - startTime, endTime - startedAt)
       capMicro = capDelta.seconds * 1000000 +  capDelta.microseconds
       finalDurationMicro = min(durationMicro, capMicro) if startedAt < endTime else 0
+      totalDurationMicro += finalDurationMicro
       print(str(finishedAt) + ' ' + str(durationMicro) + ' ' + str(finalDurationMicro))
 
+    utilizationPercent = totalDurationMicro / INTERVAL_SEC /10000
+    print(str(utilizationPercent) + '%')
     print()
     time.sleep(5)
 
