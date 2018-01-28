@@ -12,7 +12,7 @@ class ThumbnailController(val controllerComponents: ControllerComponents, ws: WS
 
   def test() = Action.async {
     val dbEc = actorSystem.dispatchers.lookup("db-pool")
-    
+
     Future {
       Thread.sleep(500)
     }(dbEc) map { _ =>
