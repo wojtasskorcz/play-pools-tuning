@@ -3,6 +3,7 @@ package com.eyeem
 import java.sql.DriverManager
 
 import com.eyeem.controllers.ThumbnailController
+import com.eyeem.filters.MetricsFilter
 import org.h2.tools.Server
 import play.api.ApplicationLoader.Context
 import play.api.libs.ws.ahc.AhcWSComponents
@@ -20,12 +21,9 @@ class MyApplicationLoader extends ApplicationLoader {
     val server = Server.createTcpServer("-tcpAllowOthers").start()
     Class.forName("org.h2.Driver")
     val conn = DriverManager.getConnection("jdbc:h2:tcp://localhost/~/metrics", "sa", "")
-//    conn.prepareStatement("drop table threads;").execute()
     conn.prepareStatement("drop all objects").execute()
     conn.prepareStatement("create table threads (id int not null auto_increment, finished_at timestamp, duration_micro int, primary key (id));").execute()
-//    conn.prepareStatement("insert into threads values (1, 999)").execute()
-//    val res = conn.prepareStatement("select * from threads").executeQuery()
-//    System.out.println(res)
+    conn.prepareStatement("create table requests (id int not null auto_increment, finished_at timestamp, duration_micro int, primary key (id));").execute()
 
     new MyComponents(context).application
   }
@@ -35,5 +33,8 @@ class MyApplicationLoader extends ApplicationLoader {
 class MyComponents(context: Context) extends BuiltInComponentsFromContext(context)
   with HttpFiltersComponents with AhcWSComponents {
   lazy val thumbnailController = new ThumbnailController(controllerComponents, wsClient)
-  lazy val router = new Routes(httpErrorHandler, thumbnailController)
+  lazy val metricsFilter = new MetricsFilter()
+
+  override lazy val router = new Routes(httpErrorHandler, thumbnailController)
+  override lazy val httpFilters = super.httpFilters :+ metricsFilter
 }
