@@ -1,17 +1,23 @@
 package com.eyeem.controllers
 
+import akka.actor.ActorSystem
 import com.typesafe.scalalogging.LazyLogging
 import play.api.libs.ws.WSClient
 import play.api.mvc.{BaseController, ControllerComponents}
 
-import scala.concurrent.ExecutionContext
+import scala.concurrent.{ExecutionContext, Future}
 
-class ThumbnailController(val controllerComponents: ControllerComponents, ws: WSClient)
+class ThumbnailController(val controllerComponents: ControllerComponents, ws: WSClient, actorSystem: ActorSystem)
                          (implicit ec: ExecutionContext) extends BaseController with LazyLogging {
 
-  def test() = Action {
-    Thread.sleep(500)
-    Ok("done")
+  def test() = Action.async {
+    val dbEc = actorSystem.dispatchers.lookup("db-pool")
+    
+    Future {
+      Thread.sleep(500)
+    }(dbEc) map { _ =>
+      Ok("done")
+    }
   }
 
   def relay() = Action.async {

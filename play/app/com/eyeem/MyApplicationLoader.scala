@@ -32,7 +32,7 @@ class MyApplicationLoader extends ApplicationLoader {
 
 class MyComponents(context: Context) extends BuiltInComponentsFromContext(context)
   with HttpFiltersComponents with AhcWSComponents {
-  lazy val thumbnailController = new ThumbnailController(controllerComponents, wsClient)
+  lazy val thumbnailController = new ThumbnailController(controllerComponents, wsClient, actorSystem)
   lazy val metricsFilter = new MetricsFilter()
 
   override lazy val router = new Routes(httpErrorHandler, thumbnailController)

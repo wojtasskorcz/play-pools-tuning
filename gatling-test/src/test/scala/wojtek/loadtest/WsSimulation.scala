@@ -17,7 +17,7 @@ abstract class WsSimulation extends Simulation {
       .get("/test")
       .check(status is 200))
 
-  setUp(scn.inject(constantUsersPerSec(3) during(10 seconds)).protocols(httpConf))
+  setUp(scn.inject(constantUsersPerSec(5) during(10 seconds)).protocols(httpConf))
 }
 
 class SingleThreadedSyncSimulation extends WsSimulation {
