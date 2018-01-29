@@ -25,24 +25,42 @@ try:
 
     # thread utilization
     print("thread utilization")
-    curs.execute("SELECT finished_at, duration_micro FROM threads where finished_at >= '" + str(startTime) + "' ORDER BY finished_at asc")
+    curs.execute("SELECT finished_at, thread_micro, pool_micro FROM threads where finished_at >= '" + str(startTime) + "' ORDER BY finished_at asc")
     totalDurationMicro = 0
+    poolDurations = []
+    waitingRatios = []
     for value in curs.fetchall():
-      finishedAt = datetime.strptime(value[0], '%Y-%m-%d %H:%M:%S.%f')
+      # handling the rare case when the timestamp doesn't have the microsecond part
+      finishedAtRaw = value[0] if '.' in value[0] else value[0] + '.0'
+      finishedAt = datetime.strptime(finishedAtRaw, '%Y-%m-%d %H:%M:%S.%f')
       durationMicro = value[1]
+      poolMicro = value[2]
+
       startedAt = finishedAt - timedelta(microseconds = durationMicro)
-      if (startedAt > endTime):
-        # print("skipping: " + str(finishedAt) + ' ' + str(durationMicro))
-        continue
+      if (startedAt < endTime):
+        capDelta = min(finishedAt - startTime, endTime - startedAt)
+        capMicro = capDelta.seconds * 1000000 +  capDelta.microseconds
+        finalDurationMicro = min(durationMicro, capMicro) if startedAt < endTime else 0
+        totalDurationMicro += finalDurationMicro
+        # print(str(finishedAt) + ' ' + str(durationMicro) + ' ' + str(finalDurationMicro))
 
-      capDelta = min(finishedAt - startTime, endTime - startedAt)
-      capMicro = capDelta.seconds * 1000000 +  capDelta.microseconds
-      finalDurationMicro = min(durationMicro, capMicro) if startedAt < endTime else 0
-      totalDurationMicro += finalDurationMicro
-      print(str(finishedAt) + ' ' + str(durationMicro) + ' ' + str(finalDurationMicro))
+      # enqueuedAt = finishedAt - timedelta(microseconds = poolMicro)
+      if (finishedAt < endTime):
+        poolDurations.append(poolMicro)
+        waitingRatios.append((poolMicro - durationMicro) * 100 / poolMicro)
+        # print(str(finishedAt) + ' ' + str(poolMicro))
 
-    utilizationPercent = totalDurationMicro / INTERVAL_SEC /10000
+    utilizationPercent = totalDurationMicro / INTERVAL_SEC / 10000
+    poolMedian = numpy.median(poolDurations) if len(poolDurations) > 0 else 0
+    poolP90 = numpy.percentile(poolDurations, 90) if len(poolDurations) > 0 else 0
+    waitingMedian = numpy.median(waitingRatios) if len(waitingRatios) > 0 else 0
+    waitingP90 = numpy.percentile(waitingRatios, 90) if len(waitingRatios) > 0 else 0
     print(str(utilizationPercent) + '%')
+    print("pool median: " + str(poolMedian) + "us")
+    print("pool p90: " + str(poolP90) + "us")
+    print("waiting median: " + str(waitingMedian) + "%")
+    print("waiting p90: " + str(waitingP90) + "%")
+
 
 
     # response times
@@ -52,12 +70,9 @@ try:
     for value in curs.fetchall():
       finishedAt = datetime.strptime(value[0], '%Y-%m-%d %H:%M:%S.%f')
       durationMicro = value[1]
-      if (finishedAt > endTime):
-        # print("skipping: " + str(finishedAt) + ' ' + str(durationMicro))
-        continue
-
-      durations.append(durationMicro)
-      print(str(finishedAt) + ' ' + str(durationMicro))
+      if (finishedAt < endTime):
+        durations.append(durationMicro)
+        # print(str(finishedAt) + ' ' + str(durationMicro))
 
     median = numpy.median(durations) if len(durations) > 0 else 0
     p90 = numpy.percentile(durations, 90) if len(durations) > 0 else 0
