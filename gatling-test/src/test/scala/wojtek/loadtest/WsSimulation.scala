@@ -52,5 +52,9 @@ class CpuSimulation extends Simulation {
       .queryParam("cycles", 1000000)
       .check(status is 200))
 
-  setUp(scn.inject(constantUsersPerSec(100) during(10 seconds)).protocols(httpConf))
+  setUp(scn.inject(
+    constantUsersPerSec(3) during(30 seconds),
+    constantUsersPerSec(100) during(20 seconds),
+    constantUsersPerSec(3) during(30 seconds),
+  ).protocols(httpConf))
 }

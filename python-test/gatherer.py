@@ -1,12 +1,13 @@
 #!/usr/bin/env python2
 
 import jaydebeapi, numpy
-import time, signal, os
+import time, signal, os, csv
 from collections import OrderedDict
 from datetime import datetime, timedelta
 
 INTERVAL_SEC = 5
-HISTORY_LENGTH = 3
+HISTORY_LENGTH = 999999
+CSV_DIR = 'csvs'
 
 
 def parseDatetime(datetimeStr):
@@ -14,10 +15,15 @@ def parseDatetime(datetimeStr):
   return datetime.strptime(normalizedStr, '%Y-%m-%d %H:%M:%S.%f')
 
 def handler(signum, frame):
-    print 'Exporting results:'
-    for k, v in results.iteritems():
-      print k, v
-    print
+  fileName = datetime.strftime(datetime.now(), '%Y-%m-%d-%H-%M-%S-%f') + '.csv'
+  filePath = os.path.join(CSV_DIR, fileName)
+  with open(filePath, 'w+') as file:
+    fieldNames = ['end_time', 'utilization_percent', 'thread_median', 'thread_p90', 'response_median', 'response_p90']
+    writer = csv.DictWriter(file, fieldNames)
+    writer.writeheader()
+    for result in results.values():
+      writer.writerow(result)
+  print 'Results exported to', filePath
 
 
 delta = timedelta(seconds = INTERVAL_SEC)
@@ -107,7 +113,10 @@ try:
       if len(results) == HISTORY_LENGTH:
         results.popitem(last = False)
       results[str(endTime)] = {
+        'end_time': str(endTime),
         'utilization_percent': utilizationPercent,
+        'thread_median': threadMedian,
+        'thread_p90': threadP90,
         'response_median': median,
         'response_p90': p90
       }
