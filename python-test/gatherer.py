@@ -1,19 +1,30 @@
 #!/usr/bin/env python2
 
-import jaydebeapi
-import numpy
-import time
+import jaydebeapi, numpy
+import time, signal, os
+from collections import OrderedDict
 from datetime import datetime, timedelta
 
 INTERVAL_SEC = 5
+HISTORY_LENGTH = 3
 
 
 def parseDatetime(datetimeStr):
   normalizedStr = datetimeStr if '.' in datetimeStr else datetimeStr + '.0'
   return datetime.strptime(normalizedStr, '%Y-%m-%d %H:%M:%S.%f')
 
+def handler(signum, frame):
+    print 'Exporting results:'
+    for k, v in results.iteritems():
+      print k, v
+    print
+
 
 delta = timedelta(seconds = INTERVAL_SEC)
+
+signal.signal(signal.SIGTSTP, handler)
+
+results = OrderedDict()
 
 conn = jaydebeapi.connect("org.h2.Driver", "jdbc:h2:tcp://localhost/~/metrics", ["sa", ""], "h2-1.4.196.jar")
 
@@ -92,8 +103,16 @@ try:
     print("median: " + str(median) + "us")
     print("p90: " + str(p90) + "us")
 
+    if str(endTime) not in results:
+      if len(results) == HISTORY_LENGTH:
+        results.popitem(last = False)
+      results[str(endTime)] = {
+        'utilization_percent': utilizationPercent,
+        'response_median': median,
+        'response_p90': p90
+      }
 
-    print()
+    print
     time.sleep(5)
 
 
