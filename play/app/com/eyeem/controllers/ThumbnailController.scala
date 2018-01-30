@@ -1,5 +1,7 @@
 package com.eyeem.controllers
 
+import javax.crypto.Cipher
+
 import akka.actor.ActorSystem
 import com.typesafe.scalalogging.LazyLogging
 import play.api.libs.ws.WSClient
@@ -29,6 +31,23 @@ class ThumbnailController(val controllerComponents: ControllerComponents, ws: WS
       val t1 = System.currentTimeMillis()
 //      logger.info(s"response time ${t1 - t0}ms")
       Ok("relayed: " + r.body)
+    }
+  }
+
+  def testCpu(cycles: Int) = Action.async {
+    val dbEc = actorSystem.dispatchers.lookup("db-pool")
+
+    Future {
+      spin(cycles)
+    }(dbEc) map { _ =>
+      Ok("done")
+    }
+  }
+
+  def spin(cycles: Int): Unit = {
+    val base = 42
+    0 to cycles foreach { i =>
+      Math.atan(Math.sqrt(Math.pow(base, 10)))
     }
   }
 }

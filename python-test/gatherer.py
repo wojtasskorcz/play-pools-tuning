@@ -7,6 +7,12 @@ from datetime import datetime, timedelta
 
 INTERVAL_SEC = 5
 
+
+def parseDatetime(datetimeStr):
+  normalizedStr = datetimeStr if '.' in datetimeStr else datetimeStr + '.0'
+  return datetime.strptime(normalizedStr, '%Y-%m-%d %H:%M:%S.%f')
+
+
 delta = timedelta(seconds = INTERVAL_SEC)
 
 conn = jaydebeapi.connect("org.h2.Driver", "jdbc:h2:tcp://localhost/~/metrics", ["sa", ""], "h2-1.4.196.jar")
@@ -18,23 +24,25 @@ try:
   while True:
     # query preparation
     now = datetime.now()
-    endTime = datetime(now.year, now.month, now.day, now.hour, now.minute, now.second - now.second % 5, 0)
+    endTimeDelta = timedelta(seconds = now.second % INTERVAL_SEC + INTERVAL_SEC, microseconds = now.microsecond)
+    # endTime = datetime(now.year, now.month, now.day, now.hour, now.minute, now.second - now.second % INTERVAL_SEC, 0)
+    endTime = now - endTimeDelta
     startTime = endTime - delta
-    print(str(startTime) + ' ' + str(endTime))
+    print(str(now) + ' measured interval: ' + str(startTime) + ' ' + str(endTime))
 
 
     # thread utilization
     print("thread utilization")
     curs.execute("SELECT finished_at, thread_micro, pool_micro FROM threads where finished_at >= '" + str(startTime) + "' ORDER BY finished_at asc")
     totalDurationMicro = 0
+    threadDurations = []
     poolDurations = []
     waitingRatios = []
     for value in curs.fetchall():
-      # handling the rare case when the timestamp doesn't have the microsecond part
-      finishedAtRaw = value[0] if '.' in value[0] else value[0] + '.0'
-      finishedAt = datetime.strptime(finishedAtRaw, '%Y-%m-%d %H:%M:%S.%f')
+      finishedAt = parseDatetime(value[0])
       durationMicro = value[1]
       poolMicro = value[2]
+      # print(str(finishedAt) + ' ' + str(durationMicro) + ' ' + str(poolMicro))
 
       startedAt = finishedAt - timedelta(microseconds = durationMicro)
       if (startedAt < endTime):
@@ -46,16 +54,21 @@ try:
 
       # enqueuedAt = finishedAt - timedelta(microseconds = poolMicro)
       if (finishedAt < endTime):
+        threadDurations.append(durationMicro)
         poolDurations.append(poolMicro)
         waitingRatios.append((poolMicro - durationMicro) * 100 / poolMicro)
         # print(str(finishedAt) + ' ' + str(poolMicro))
 
     utilizationPercent = totalDurationMicro / INTERVAL_SEC / 10000
+    threadMedian = numpy.median(threadDurations) if len(threadDurations) > 0 else 0
+    threadP90 = numpy.percentile(threadDurations, 90) if len(threadDurations) > 0 else 0
     poolMedian = numpy.median(poolDurations) if len(poolDurations) > 0 else 0
     poolP90 = numpy.percentile(poolDurations, 90) if len(poolDurations) > 0 else 0
     waitingMedian = numpy.median(waitingRatios) if len(waitingRatios) > 0 else 0
     waitingP90 = numpy.percentile(waitingRatios, 90) if len(waitingRatios) > 0 else 0
     print(str(utilizationPercent) + '%')
+    print("thread median: " + str(threadMedian) + "us")
+    print("thread p90: " + str(threadP90) + "us")
     print("pool median: " + str(poolMedian) + "us")
     print("pool p90: " + str(poolP90) + "us")
     print("waiting median: " + str(waitingMedian) + "%")
@@ -68,7 +81,7 @@ try:
     curs.execute("SELECT finished_at, duration_micro FROM requests where finished_at >= '" + str(startTime) + "' ORDER BY finished_at asc")
     durations = []
     for value in curs.fetchall():
-      finishedAt = datetime.strptime(value[0], '%Y-%m-%d %H:%M:%S.%f')
+      finishedAt = parseDatetime(value[0])
       durationMicro = value[1]
       if (finishedAt < endTime):
         durations.append(durationMicro)
