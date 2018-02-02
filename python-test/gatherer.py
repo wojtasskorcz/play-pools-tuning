@@ -18,7 +18,9 @@ def handler(signum, frame):
   fileName = datetime.strftime(datetime.now(), '%Y-%m-%d-%H-%M-%S-%f') + '.csv'
   filePath = os.path.join(CSV_DIR, fileName)
   with open(filePath, 'w+') as file:
-    fieldNames = ['end_time', 'utilization_percent', 'thread_median', 'thread_p90', 'response_median', 'response_p90']
+    fieldNames = ['end_time', 'utilization_percent', 'thread_median_micro', 'thread_p90_micro', 
+      'pool_median_micro', 'pool_p90_micro', 'waiting_median_percent', 'waiting_p90_percent',
+      'response_median_micro', 'response_p90_micro']
     writer = csv.DictWriter(file, fieldNames)
     writer.writeheader()
     for result in results.values():
@@ -45,84 +47,102 @@ try:
     # endTime = datetime(now.year, now.month, now.day, now.hour, now.minute, now.second - now.second % INTERVAL_SEC, 0)
     endTime = now - endTimeDelta
     startTime = endTime - delta
-    print(str(now) + ' measured interval: ' + str(startTime) + ' ' + str(endTime))
 
-
-    # thread utilization
-    print("thread utilization")
-    curs.execute("SELECT finished_at, thread_micro, pool_micro FROM threads where finished_at >= '" + str(startTime) + "' ORDER BY finished_at asc")
-    totalDurationMicro = 0
-    threadDurations = []
-    poolDurations = []
-    waitingRatios = []
-    for value in curs.fetchall():
-      finishedAt = parseDatetime(value[0])
-      durationMicro = value[1]
-      poolMicro = value[2]
-      # print(str(finishedAt) + ' ' + str(durationMicro) + ' ' + str(poolMicro))
-
-      startedAt = finishedAt - timedelta(microseconds = durationMicro)
-      if (startedAt < endTime):
-        capDelta = min(finishedAt - startTime, endTime - startedAt)
-        capMicro = capDelta.seconds * 1000000 +  capDelta.microseconds
-        finalDurationMicro = min(durationMicro, capMicro) if startedAt < endTime else 0
-        totalDurationMicro += finalDurationMicro
-        # print(str(finishedAt) + ' ' + str(durationMicro) + ' ' + str(finalDurationMicro))
-
-      # enqueuedAt = finishedAt - timedelta(microseconds = poolMicro)
-      if (finishedAt < endTime):
-        threadDurations.append(durationMicro)
-        poolDurations.append(poolMicro)
-        waitingRatios.append((poolMicro - durationMicro) * 100 / poolMicro)
-        # print(str(finishedAt) + ' ' + str(poolMicro))
-
-    utilizationPercent = totalDurationMicro / INTERVAL_SEC / 10000
-    threadMedian = numpy.median(threadDurations) if len(threadDurations) > 0 else 0
-    threadP90 = numpy.percentile(threadDurations, 90) if len(threadDurations) > 0 else 0
-    poolMedian = numpy.median(poolDurations) if len(poolDurations) > 0 else 0
-    poolP90 = numpy.percentile(poolDurations, 90) if len(poolDurations) > 0 else 0
-    waitingMedian = numpy.median(waitingRatios) if len(waitingRatios) > 0 else 0
-    waitingP90 = numpy.percentile(waitingRatios, 90) if len(waitingRatios) > 0 else 0
-    print(str(utilizationPercent) + '%')
-    print("thread median: " + str(threadMedian) + "us")
-    print("thread p90: " + str(threadP90) + "us")
-    print("pool median: " + str(poolMedian) + "us")
-    print("pool p90: " + str(poolP90) + "us")
-    print("waiting median: " + str(waitingMedian) + "%")
-    print("waiting p90: " + str(waitingP90) + "%")
-
-
-
-    # response times
-    print("response times")
-    curs.execute("SELECT finished_at, duration_micro FROM requests where finished_at >= '" + str(startTime) + "' ORDER BY finished_at asc")
-    durations = []
-    for value in curs.fetchall():
-      finishedAt = parseDatetime(value[0])
-      durationMicro = value[1]
-      if (finishedAt < endTime):
-        durations.append(durationMicro)
-        # print(str(finishedAt) + ' ' + str(durationMicro))
-
-    median = numpy.median(durations) if len(durations) > 0 else 0
-    p90 = numpy.percentile(durations, 90) if len(durations) > 0 else 0
-    print("median: " + str(median) + "us")
-    print("p90: " + str(p90) + "us")
-
+    # It's possible that the while-loop will execute multiple times for one measurement period
+    # (after the handler execution). Therefore we check if this is a new measurement period.
     if str(endTime) not in results:
+
+      print(str(now) + ' measured interval: ' + str(startTime) + ' ' + str(endTime))
+
+      # thread utilization
+      curs.execute("SELECT finished_at, thread_micro, pool_micro FROM threads where finished_at >= '" + str(startTime) + "' ORDER BY finished_at asc")
+      totalDurationMicro = 0
+      threadDurations = []
+      poolDurations = []
+      # waitingRatios = []
+      for value in curs.fetchall():
+        finishedAt = parseDatetime(value[0])
+        threadMicro = value[1]
+        poolMicro = value[2]
+        # print(str(finishedAt) + ' ' + str(threadMicro) + ' ' + str(poolMicro))
+
+        if (threadMicro > INTERVAL_SEC * 1000000):
+          print "Thread execution time greater than metrics collection interval. Utilization metrics are inaccurate. Exiting."
+          sys.exit(1)
+
+
+        startedAt = finishedAt - timedelta(microseconds = threadMicro)
+        if (startedAt < endTime):
+          capDelta = min(finishedAt - startTime, endTime - startedAt)
+          capMicro = capDelta.seconds * 1000000 +  capDelta.microseconds
+          finalDurationMicro = min(threadMicro, capMicro) if startedAt < endTime else 0
+          totalDurationMicro += finalDurationMicro
+          # print(str(finishedAt) + ' ' + str(threadMicro) + ' ' + str(finalDurationMicro))
+
+        # enqueuedAt = finishedAt - timedelta(microseconds = poolMicro)
+        if (finishedAt < endTime):
+          threadDurations.append(threadMicro)
+          poolDurations.append(poolMicro)
+          # print(str(finishedAt) + ' ' + str(poolMicro))
+
+      utilizationPercent = totalDurationMicro / INTERVAL_SEC / 10000
+      threadMedian = numpy.median(threadDurations) if len(threadDurations) > 0 else 0
+      threadP90 = numpy.percentile(threadDurations, 90) if len(threadDurations) > 0 else 0
+      poolMedian = numpy.median(poolDurations) if len(poolDurations) > 0 else 0
+      poolP90 = numpy.percentile(poolDurations, 90) if len(poolDurations) > 0 else 0
+
+      waitingRatios = map(
+        lambda pair: (pair[1] - pair[0]) * 100 / pair[1],
+        zip(threadDurations, poolDurations))
+      waitingMedian = numpy.median(waitingRatios) if len(waitingRatios) > 0 else 0
+      waitingP90 = numpy.percentile(waitingRatios, 90) if len(waitingRatios) > 0 else 0
+
+
+      # response times
+      curs.execute("SELECT finished_at, duration_micro FROM requests where finished_at >= '" + str(startTime) + "' ORDER BY finished_at asc")
+      responseDurations = []
+      for value in curs.fetchall():
+        finishedAt = parseDatetime(value[0])
+        durationMicro = value[1]
+        if (finishedAt < endTime):
+          responseDurations.append(durationMicro)
+          # print(str(finishedAt) + ' ' + str(durationMicro))
+
+      responseMedian = numpy.median(responseDurations) if len(responseDurations) > 0 else 0
+      responseP90 = numpy.percentile(responseDurations, 90) if len(responseDurations) > 0 else 0
+      
+      print(str(utilizationPercent) + '%')
+      print("thread median: " + str(threadMedian / 1000) + "ms")
+      print("thread p90: " + str(threadP90 / 1000) + "ms")
+      print("pool median: " + str(poolMedian / 1000) + "ms")
+      print("pool p90: " + str(poolP90 / 1000) + "ms")
+      print("waiting median: " + str(waitingMedian) + "%")
+      print("waiting p90: " + str(waitingP90) + "%")
+      print("response median: " + str(responseMedian / 1000) + "ms")
+      print("response p90: " + str(responseP90 / 1000) + "ms")
+
+
       if len(results) == HISTORY_LENGTH:
         results.popitem(last = False)
+
       results[str(endTime)] = {
         'end_time': str(endTime),
         'utilization_percent': utilizationPercent,
-        'thread_median': threadMedian,
-        'thread_p90': threadP90,
-        'response_median': median,
-        'response_p90': p90
+        'thread_median_micro': threadMedian / 1000,
+        'thread_p90_micro': threadP90 / 1000,
+        'pool_median_micro': poolMedian / 1000,
+        'pool_p90_micro': poolP90 / 1000,
+        'waiting_median_percent': waitingMedian,
+        'waiting_p90_percent': waitingP90,
+        'response_median_micro': responseMedian / 1000,
+        'response_p90_micro': responseP90 / 1000
       }
 
-    print
-    time.sleep(5)
+      # print results
+
+      print
+    
+    time.sleep(INTERVAL_SEC)
 
 
 finally:
