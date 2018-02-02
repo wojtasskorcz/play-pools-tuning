@@ -35,6 +35,8 @@ class WsSimulation extends LocalSimulation {
       .check(status is 200))
 
   setUp(scn.inject(
-    constantUsersPerSec(5) during(10 seconds)
+    constantUsersPerSec(20) during(30 seconds),
+    constantUsersPerSec(30) during(60 seconds),
+    constantUsersPerSec(10) during(30 seconds)
   ).protocols(httpConf))
 }
