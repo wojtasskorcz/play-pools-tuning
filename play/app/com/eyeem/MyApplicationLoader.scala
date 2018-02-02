@@ -6,7 +6,6 @@ import com.eyeem.controllers.ThumbnailController
 import com.eyeem.filters.MetricsFilter
 import org.h2.tools.Server
 import play.api.ApplicationLoader.Context
-import play.api.libs.ws.ahc.AhcWSComponents
 import play.api.{ApplicationLoader, BuiltInComponentsFromContext, LoggerConfigurator}
 import play.filters.HttpFiltersComponents
 import router.Routes
@@ -31,9 +30,8 @@ class MyApplicationLoader extends ApplicationLoader {
 
 }
 
-class MyComponents(context: Context) extends BuiltInComponentsFromContext(context)
-  with HttpFiltersComponents with AhcWSComponents {
-  lazy val thumbnailController = new ThumbnailController(controllerComponents, wsClient, actorSystem)
+class MyComponents(context: Context) extends BuiltInComponentsFromContext(context) with HttpFiltersComponents {
+  lazy val thumbnailController = new ThumbnailController(controllerComponents, actorSystem)
   lazy val metricsFilter = new MetricsFilter()
 
   override lazy val router = new Routes(httpErrorHandler, thumbnailController)

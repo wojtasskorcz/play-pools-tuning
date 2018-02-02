@@ -1,3 +1,2 @@
-GET     /test    com.eyeem.controllers.ThumbnailController.test
-GET     /relay   com.eyeem.controllers.ThumbnailController.relay
-GET     /testCpu com.eyeem.controllers.ThumbnailController.testCpu(cycles: Int)
+GET     /testWs    com.eyeem.controllers.ThumbnailController.testWs
+GET     /testCpu   com.eyeem.controllers.ThumbnailController.testCpu(cycles: Int)

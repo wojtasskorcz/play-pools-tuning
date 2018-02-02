@@ -42,7 +42,7 @@ class InstrumentedThreadPoolExecutor(corePoolSize: Int, maximumPoolSize: Int, ke
     }
     connection.get.prepareStatement(s"insert into threads (finished_at, thread_micro, pool_micro) values ('$finishedAt', $durationMicro, $poolTimeMicro)").execute()
 
-    //    logger.info(nowMillis + " thread execution took " + durationMicro + "us")
+//    logger.info(nowMillis + " thread execution took " + durationMicro + "us")
 //    logger.info(nowMillis + " total pool time took " + poolTimeMicro + "us")
   }
 }
