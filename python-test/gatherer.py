@@ -1,7 +1,7 @@
 #!/usr/bin/env python2
 
 import jaydebeapi, numpy
-import time, signal, os, csv
+import time, signal, os, csv, sys
 from collections import OrderedDict
 from datetime import datetime, timedelta
 
@@ -20,7 +20,7 @@ def handler(signum, frame):
   with open(filePath, 'w+') as file:
     fieldNames = ['end_time', 'utilization_percent', 'thread_median_ms', 'thread_p90_ms', 'thread_max_ms', 
       'pool_median_ms', 'pool_p90_ms', 'pool_max_ms', 'waiting_median_percent', 'waiting_p90_percent',
-      'waiting_max_percent', 'response_median_ms', 'response_p90_ms', 'response_max_ms']
+      'waiting_max_percent', 'num_responses', 'response_median_ms', 'response_p90_ms', 'response_max_ms']
     writer = csv.DictWriter(file, fieldNames)
     writer.writeheader()
     for result in results.values():
@@ -42,19 +42,19 @@ try:
   while True:
     # query preparation
     now = datetime.now()
-    endTimeDelta = timedelta(seconds = now.second % INTERVAL_SEC + INTERVAL_SEC, microseconds = now.microsecond)
-    # endTime = datetime(now.year, now.month, now.day, now.hour, now.minute, now.second - now.second % INTERVAL_SEC, 0)
-    endTime = now - endTimeDelta
-    startTime = endTime - delta
+    intervalEndTimeDelta = timedelta(seconds = now.second % INTERVAL_SEC + INTERVAL_SEC, microseconds = now.microsecond)
+    # intervalEndTime = datetime(now.year, now.month, now.day, now.hour, now.minute, now.second - now.second % INTERVAL_SEC, 0)
+    intervalEndTime = now - intervalEndTimeDelta
+    intervalStartTime = intervalEndTime - delta
 
     # It's possible that the while-loop will execute multiple times for one measurement period
     # (after the handler execution). Therefore we check if this is a new measurement period.
-    if str(endTime) not in results:
+    if str(intervalEndTime) not in results:
 
-      print(str(now) + ' measured interval: ' + str(startTime) + ' ' + str(endTime))
+      print(str(now) + ' measured interval: ' + str(intervalStartTime) + ' ' + str(intervalEndTime))
 
       # thread utilization
-      curs.execute("SELECT finished_at, thread_micro, pool_micro FROM threads where finished_at >= '" + str(startTime) + "' ORDER BY finished_at asc")
+      curs.execute("SELECT finished_at, thread_micro, pool_micro FROM threads where finished_at >= '" + str(intervalStartTime) + "' ORDER BY finished_at asc")
       totalDurationMicro = 0
       threadDurations = []
       poolDurations = []
@@ -70,15 +70,15 @@ try:
 
 
         startedAt = finishedAt - timedelta(microseconds = threadMicro)
-        if (startedAt < endTime):
-          capDelta = min(finishedAt - startTime, endTime - startedAt)
+        if (startedAt < intervalEndTime):
+          capDelta = min(finishedAt - intervalStartTime, intervalEndTime - startedAt)
           capMicro = capDelta.seconds * 1000000 +  capDelta.microseconds
-          finalDurationMicro = min(threadMicro, capMicro) if startedAt < endTime else 0
+          finalDurationMicro = min(threadMicro, capMicro) if startedAt < intervalEndTime else 0
           totalDurationMicro += finalDurationMicro
           # print(str(finishedAt) + ' ' + str(threadMicro) + ' ' + str(finalDurationMicro))
 
         # enqueuedAt = finishedAt - timedelta(microseconds = poolMicro)
-        if (finishedAt < endTime):
+        if (finishedAt < intervalEndTime):
           threadDurations.append(threadMicro)
           poolDurations.append(poolMicro)
           # print(str(finishedAt) + ' ' + str(poolMicro))
@@ -100,18 +100,19 @@ try:
 
 
       # response times
-      curs.execute("SELECT finished_at, duration_micro FROM requests where finished_at >= '" + str(startTime) + "' ORDER BY finished_at asc")
+      curs.execute("SELECT finished_at, duration_micro FROM requests where finished_at >= '" + str(intervalStartTime) + "' ORDER BY finished_at asc")
       responseDurations = []
       for value in curs.fetchall():
         finishedAt = parseDatetime(value[0])
         durationMicro = value[1]
-        if (finishedAt < endTime):
+        if (finishedAt < intervalEndTime):
           responseDurations.append(durationMicro)
           # print(str(finishedAt) + ' ' + str(durationMicro))
 
-      responseMedian = numpy.median(responseDurations) if len(responseDurations) > 0 else 0
-      responseP90 = numpy.percentile(responseDurations, 90) if len(responseDurations) > 0 else 0
-      responseMax = max(responseDurations) if len(responseDurations) > 0 else 0
+      numResponses = len(responseDurations)
+      responseMedian = numpy.median(responseDurations) if numResponses > 0 else 0
+      responseP90 = numpy.percentile(responseDurations, 90) if numResponses > 0 else 0
+      responseMax = max(responseDurations) if numResponses > 0 else 0
       
       print(str(utilizationPercent) + '%')
       print("thread median: " + str(threadMedian / 1000) + "ms")
@@ -123,6 +124,7 @@ try:
       print("waiting median: " + str(waitingMedian) + "%")
       print("waiting p90: " + str(waitingP90) + "%")
       print("waiting max: " + str(waitingMax) + "%")
+      print("num_responses: " + str(numResponses))
       print("response median: " + str(responseMedian / 1000) + "ms")
       print("response p90: " + str(responseP90 / 1000) + "ms")
       print("response max: " + str(responseMax / 1000) + "ms")
@@ -131,8 +133,8 @@ try:
       if len(results) == HISTORY_LENGTH:
         results.popitem(last = False)
 
-      results[str(endTime)] = {
-        'end_time': str(endTime),
+      results[str(intervalEndTime)] = {
+        'end_time': str(intervalEndTime),
         'utilization_percent': utilizationPercent,
         'thread_median_ms': threadMedian / 1000,
         'thread_p90_ms': threadP90 / 1000,
@@ -143,6 +145,7 @@ try:
         'waiting_median_percent': waitingMedian,
         'waiting_p90_percent': waitingP90,
         'waiting_max_percent': waitingMax,
+        'num_responses': numResponses,
         'response_median_ms': responseMedian / 1000,
         'response_p90_ms': responseP90 / 1000,
         'response_max_ms': responseMax / 1000
