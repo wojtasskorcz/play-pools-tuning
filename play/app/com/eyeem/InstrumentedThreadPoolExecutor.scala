@@ -36,7 +36,7 @@ class InstrumentedThreadPoolExecutor(corePoolSize: Int, maximumPoolSize: Int, ke
     val finishedAt = new Timestamp(nowMillis)
     val conn = DriverManager.getConnection("jdbc:h2:tcp://localhost/~/metrics", "sa", "")
     conn.prepareStatement(s"insert into threads (finished_at, thread_micro, pool_micro) values ('$finishedAt', $durationMicro, $poolTimeMicro)").execute()
-    logger.info(nowMillis + " thread execution took " + durationMicro + "us")
-    logger.info(nowMillis + " total pool time took " + poolTimeMicro + "us")
+//    logger.info(nowMillis + " thread execution took " + durationMicro + "us")
+//    logger.info(nowMillis + " total pool time took " + poolTimeMicro + "us")
   }
 }

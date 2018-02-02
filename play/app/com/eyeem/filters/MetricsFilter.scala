@@ -18,7 +18,7 @@ class MetricsFilter(implicit val mat: Materializer, implicit val ec: ExecutionCo
         val finishedAt = new Timestamp(System.currentTimeMillis())
         val conn = DriverManager.getConnection("jdbc:h2:tcp://localhost/~/metrics", "sa", "")
         conn.prepareStatement(s"insert into requests (finished_at, duration_micro) values ('$finishedAt', $durationMicro)").execute()
-        logger.info(System.currentTimeMillis() + " request took " + durationMicro + "us")
+//        logger.info(System.currentTimeMillis() + " request took " + durationMicro + "us")
 
         result
       }
