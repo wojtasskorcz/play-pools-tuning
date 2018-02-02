@@ -1,6 +1,6 @@
 package com.eyeem
 
-import java.sql.{DriverManager, Timestamp}
+import java.sql.{Connection, DriverManager, Timestamp}
 import java.util.concurrent._
 
 import com.typesafe.scalalogging.LazyLogging
@@ -12,6 +12,7 @@ class InstrumentedThreadPoolExecutor(corePoolSize: Int, maximumPoolSize: Int, ke
     with LazyLogging {
 
   private val startTime = new ThreadLocal[Long]
+  private val connection = new ThreadLocal[Connection]
   private val requestTime = new java.util.concurrent.ConcurrentHashMap[Runnable, Long]()
 
   override def execute(command: Runnable) = {
@@ -34,9 +35,14 @@ class InstrumentedThreadPoolExecutor(corePoolSize: Int, maximumPoolSize: Int, ke
     val durationMicro = (nowNano - startTime.get()) / 1000
     val poolTimeMicro = (nowNano - requestTime.remove(r)) / 1000
     val finishedAt = new Timestamp(nowMillis)
-    val conn = DriverManager.getConnection("jdbc:h2:tcp://localhost/~/metrics", "sa", "")
-    conn.prepareStatement(s"insert into threads (finished_at, thread_micro, pool_micro) values ('$finishedAt', $durationMicro, $poolTimeMicro)").execute()
-//    logger.info(nowMillis + " thread execution took " + durationMicro + "us")
+
+    if (connection.get == null) {
+      val conn = DriverManager.getConnection("jdbc:h2:tcp://localhost/~/metrics", "sa", "")
+      connection.set(conn)
+    }
+    connection.get.prepareStatement(s"insert into threads (finished_at, thread_micro, pool_micro) values ('$finishedAt', $durationMicro, $poolTimeMicro)").execute()
+
+    //    logger.info(nowMillis + " thread execution took " + durationMicro + "us")
 //    logger.info(nowMillis + " total pool time took " + poolTimeMicro + "us")
   }
 }
