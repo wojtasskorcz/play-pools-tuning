@@ -13,8 +13,8 @@ class InstrumentedThreadPoolExecutor(corePoolSize: Int, maximumPoolSize: Int, ke
     with LazyLogging {
 
   private val startTime = new ThreadLocal[Long]
-  private val connection = new ThreadLocal[Connection]
   private val requestTime = new java.util.concurrent.ConcurrentHashMap[Runnable, Long]()
+  private val connection = new ThreadLocal[Connection]
 
   override def execute(command: Runnable) = {
     requestTime.put(command, System.nanoTime())
