@@ -14,20 +14,20 @@ The metrics collection script requires Python 2.7 along with the [JayDeBeApi](ht
 
 ### Configuring the test setup
 
-To configure the tested thread pool settings change the `fixed-pool-size` property in `<path_to_play>/conf/application.conf`.
+To configure the tested thread pool settings change the `fixed-pool-size` property in `play-app/conf/application.conf`.
 
-You may want to tune the following variables in the metrics gathering script in `<path_to_script>`:
+You may want to tune the following variables in the metrics gathering script in `gatherer/gatherer.py`:
   * `INTERVAL_SEC` - in what intervals should the metrics be gathered
   * `HISTORY_LENGTH` - how many intervals are kept by the script in history in order to later export them to CSV
   * `CSV_DIR` - where to store the generated CSVs
 
-Gatling scenarios can be adjusted in `<path_to_gatling>/wojtek/loadtest/LocalSimulation.scala`.
+Gatling scenarios can be adjusted in `gatling-test/src/test/scala/wojtek/loadtest/LocalSimulation.scala`.
 
-### Running the test
+### Running a test
 
-1. Start the Play application from `<path_to_play>` by running `sbt run`.
-2. Start the metrics gathering script from `<path_to_script>` simply using `./gatherer.py`.
-3. Start the Gatling simulation from `<path_to_gatling>` by running `sbt 'gatling:testOnly *CpuSimulation'` or `sbt 'gatling:testOnly *WsSimulation'`
+1. Start the Play application from `play-app/` by running `sbt run`.
+2. Start the metrics gathering script from `gatherer/` by running `./gatherer.py`.
+3. Start the Gatling simulation from `gatling-test/` by running `sbt 'gatling:testOnly *CpuSimulation'` or `sbt 'gatling:testOnly *WsSimulation'`
 
 You can observe the gathered metrics in the standard output from the gatherer script. In order to export the metrics to CSV press <kbd>CTRL</kbd> + <kbd>Z</kbd>. The script and the other applications can be shut down using <kbd>CTRL</kbd> + <kbd>C</kbd>.
 
@@ -35,7 +35,7 @@ You can observe the gathered metrics in the standard output from the gatherer sc
 
 First test: CPU-heavy requests
 
-In this test we simulate multiple users requesting a CPU-heavy computation on the server. The exact scenario is available in the repo [link to CpuSimulation] but it may need some adjustments on different machines to reproduce the results. The test was performed on a machine with a 6-core AMD Ryzen 5 1600 CPU running 12 threads. Test results may be slightly skewed/inaccurate, as the whole infrastructure (Gatling, H2 database and the script collecting the metrics) was running on the same machine as the application under test. Nevertheless, the influence of those applications should be relatively insignificant.
+In this test we simulate multiple users requesting a CPU-heavy computation on the server. The exact scenario is defined in [CpuSimulation](https://github.com/wojtasskorcz/play-pools-tuning/blob/master/gatling-test/src/test/scala/wojtek/loadtest/LocalSimulation.scala#L14) but it may need some adjustments on different machines to reproduce the results. The test was performed on a machine with a 6-core AMD Ryzen 5 1600 CPU running 12 threads. Test results may be slightly skewed/inaccurate, as the whole infrastructure (Gatling, H2 database and the script collecting the metrics) was running on the same machine as the application under test. Nevertheless, the influence of those applications should be relatively insignificant.
 
 [response times chart]
 
@@ -56,7 +56,7 @@ We've shown how the previous metrics can help predict when to scale down a CPU-h
 
 Second test: blocking requests
 
-The need for scaling up a thread pool rarely arises in case of CPU-heavy requests (unless we upgrade the underlying hardware). On the other hand, it may well be the case for thread pools designed for handling blocking operations if a downstream web service or database get upgraded and suddenly can handle more load. Let's consider this scenario in this test [link to WsSimulation].
+The need for scaling up a thread pool rarely arises in case of CPU-heavy requests (unless we upgrade the underlying hardware). On the other hand, it may well be the case for thread pools designed for handling blocking operations if a downstream web service or database get upgraded and suddenly can handle more load. Let's consider this scenario in the test defined in [WsSimulation](https://github.com/wojtasskorcz/play-pools-tuning/blob/master/gatling-test/src/test/scala/wojtek/loadtest/LocalSimulation.scala#L14).
 
 [response times chart]
 
