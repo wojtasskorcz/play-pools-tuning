@@ -1,7 +1,5 @@
 package wojtek.loadtest
 
-import java.sql.DriverManager
-
 import wojtek.loadtest.controllers.ThumbnailController
 import wojtek.loadtest.filters.MetricsFilter
 import org.h2.tools.Server
@@ -9,6 +7,7 @@ import play.api.ApplicationLoader.Context
 import play.api.{ApplicationLoader, BuiltInComponentsFromContext, LoggerConfigurator}
 import play.filters.HttpFiltersComponents
 import router.Routes
+import wojtek.loadtest.services.DbService
 
 class MyApplicationLoader extends ApplicationLoader {
 
@@ -19,7 +18,7 @@ class MyApplicationLoader extends ApplicationLoader {
 
     Server.createTcpServer("-tcpAllowOthers").start()
     Class.forName("org.h2.Driver")
-    val conn = DriverManager.getConnection("jdbc:h2:tcp://localhost/~/metrics", "sa", "")
+    val conn = DbService.openConnection()
     conn.prepareStatement("drop all objects").execute()
     conn.prepareStatement("create table threads (id int not null auto_increment, " +
       "finished_at timestamp, thread_micro int, pool_micro int, primary key (id))").execute()
