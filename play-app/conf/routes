@@ -1,0 +1,2 @@
+GET     /testWs    wojtek.loadtest.controllers.ThumbnailController.testWs
+GET     /testCpu   wojtek.loadtest.controllers.ThumbnailController.testCpu(cycles: Int)

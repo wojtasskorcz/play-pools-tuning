@@ -1,4 +1,4 @@
-package com.eyeem
+package wojtek.loadtest
 
 import java.sql.{Connection, DriverManager, Timestamp}
 import java.util.concurrent._

@@ -1,9 +1,9 @@
-package com.eyeem
+package wojtek.loadtest
 
 import java.sql.DriverManager
 
-import com.eyeem.controllers.ThumbnailController
-import com.eyeem.filters.MetricsFilter
+import wojtek.loadtest.controllers.ThumbnailController
+import wojtek.loadtest.filters.MetricsFilter
 import org.h2.tools.Server
 import play.api.ApplicationLoader.Context
 import play.api.{ApplicationLoader, BuiltInComponentsFromContext, LoggerConfigurator}

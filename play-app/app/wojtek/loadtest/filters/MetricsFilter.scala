@@ -1,4 +1,4 @@
-package com.eyeem.filters
+package wojtek.loadtest.filters
 
 import java.sql.{DriverManager, Timestamp}
 

@@ -1,4 +1,4 @@
-package com.eyeem.controllers
+package wojtek.loadtest.controllers
 
 import akka.actor.ActorSystem
 import com.typesafe.scalalogging.LazyLogging

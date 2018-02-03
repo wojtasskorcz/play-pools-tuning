@@ -1,2 +1,0 @@
-GET     /testWs    com.eyeem.controllers.ThumbnailController.testWs
-GET     /testCpu   com.eyeem.controllers.ThumbnailController.testCpu(cycles: Int)

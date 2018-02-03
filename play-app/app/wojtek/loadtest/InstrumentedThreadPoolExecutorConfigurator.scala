@@ -1,4 +1,4 @@
-package com.eyeem
+package wojtek.loadtest
 
 import java.util.concurrent._
 
