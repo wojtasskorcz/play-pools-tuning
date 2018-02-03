@@ -1,4 +1,4 @@
-# play-vs-spring
+# play-pools-tuning
 
 > [...] if you plan to write blocking IO code, or code that could potentially do a lot of CPU intensive work, you need to know exactly which thread pool is bearing that workload, and you need to tune it accordingly
 
@@ -33,11 +33,11 @@ You can observe the gathered metrics in the standard output from the gatherer sc
 
 ### Test results
 
-First test: CPU-heavy requests
+#### First test: CPU-heavy requests
 
 In this test we simulate multiple users requesting a CPU-heavy computation on the server. The exact scenario is defined in [CpuSimulation](https://github.com/wojtasskorcz/play-pools-tuning/blob/master/gatling-test/src/test/scala/wojtek/loadtest/LocalSimulation.scala#L14) but it may need some adjustments on different machines to reproduce the results. The test was performed on a machine with a 6-core AMD Ryzen 5 1600 CPU running 12 threads. Test results may be slightly skewed/inaccurate, as the whole infrastructure (Gatling, H2 database and the script collecting the metrics) was running on the same machine as the application under test. Nevertheless, the influence of those applications should be relatively insignificant.
 
-[response times chart]
+![](https://github.com/wojtasskorcz/play-pools-tuning/blob/master/results/cpu-response.png)
 
 The first chart shows response times from the service when running the test scenario twice: once on a thread pool with 100 threads (16:58:50 - 17:01:25) and once with 12 threads (17:01:40 - 17:04:15). Metrics were collected every five seconds. The small blips at 16:58:40 and 17:01:35 are single requests sent in order to cause application reload (to change the thread pool settings).
 
@@ -53,8 +53,7 @@ As we can see here, under heavy load the more optimized pool forces its tasks to
 
 We've shown how the previous metrics can help predict when to scale down a CPU-heavy thread pool. If we want to check if scaling up is needed we can work with a reverse logic. Before, we checked if thread execution time was high (relatively to the baseline) and waiting ratio was low -- it meant that the pool was too big. On the other hand, if execution time stays relatively constant but waiting ratio keeps growin, it may be worth to try a bit bigger pool. In our case We could see if 18- or 24-thread pool would speed things up.
 
-
-Second test: blocking requests
+#### Second test: blocking requests
 
 The need for scaling up a thread pool rarely arises in case of CPU-heavy requests (unless we upgrade the underlying hardware). On the other hand, it may well be the case for thread pools designed for handling blocking operations if a downstream web service or database get upgraded and suddenly can handle more load. Let's consider this scenario in the test defined in [WsSimulation](https://github.com/wojtasskorcz/play-pools-tuning/blob/master/gatling-test/src/test/scala/wojtek/loadtest/LocalSimulation.scala#L14).
 
