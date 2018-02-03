@@ -1,15 +1,12 @@
 package wojtek.loadtest.controllers
 
-import akka.actor.ActorSystem
 import com.typesafe.scalalogging.LazyLogging
 import play.api.mvc.{BaseController, ControllerComponents}
 
 import scala.concurrent.{ExecutionContext, Future}
 
-class ThumbnailController(val controllerComponents: ControllerComponents, actorSystem: ActorSystem)
+class ThumbnailController(val controllerComponents: ControllerComponents, instrumentedEc: ExecutionContext)
                          (implicit ec: ExecutionContext) extends BaseController with LazyLogging {
-
-  private val instrumentedEc = actorSystem.dispatchers.lookup("instrumented-pool")
 
   def testWs() = Action.async {
     Future {

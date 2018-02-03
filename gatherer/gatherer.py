@@ -28,16 +28,10 @@ def parseDatetime(datetimeStr):
   normalizedStr = datetimeStr if '.' in datetimeStr else datetimeStr + '.0'
   return datetime.strptime(normalizedStr, '%Y-%m-%d %H:%M:%S.%f')
 
-def measure(cursor, intervalStartTime, intervalEndTime):
-  threadsResult = measureThreads(cursor, intervalStartTime, intervalEndTime)
-  responsesResult = measureResponses(cursor, intervalStartTime, intervalEndTime)
-  result = {'end_time': str(intervalEndTime)}
-  result.update(threadsResult)
-  result.update(responsesResult)
-  return result
-
 def measureThreads(cursor, intervalStartTime, intervalEndTime):
-  cursor.execute("SELECT finished_at, thread_micro, pool_micro FROM threads where finished_at >= '" + str(intervalStartTime) + "' ORDER BY finished_at asc")
+  cursor.execute("SELECT finished_at, thread_micro, pool_micro FROM threads where finished_at >= '" +
+    str(intervalStartTime) + "' ORDER BY finished_at asc")
+
   totalDurationMicro = 0
   threadDurations = []
   poolDurations = []
@@ -88,7 +82,9 @@ def measureThreads(cursor, intervalStartTime, intervalEndTime):
   }
 
 def measureResponses(cursor, intervalStartTime, intervalEndTime):
-  cursor.execute("SELECT finished_at, duration_micro FROM requests where finished_at >= '" + str(intervalStartTime) + "' ORDER BY finished_at asc")
+  cursor.execute("SELECT finished_at, duration_micro FROM requests where finished_at >= '" +
+    str(intervalStartTime) + "' ORDER BY finished_at asc")
+  
   responseDurations = []
   for value in cursor.fetchall():
     finishedAt = parseDatetime(value[0])
@@ -108,6 +104,14 @@ def measureResponses(cursor, intervalStartTime, intervalEndTime):
     'response_max_ms': responseMax / 1000
   }
 
+def measure(cursor, intervalStartTime, intervalEndTime):
+  threadsResult = measureThreads(cursor, intervalStartTime, intervalEndTime)
+  responsesResult = measureResponses(cursor, intervalStartTime, intervalEndTime)
+  result = {'end_time': str(intervalEndTime)}
+  result.update(threadsResult)
+  result.update(responsesResult)
+  return result
+
 def printResult(result):
   print 'utilization:', str(result['utilization_percent']) + '%'
   print 'thread median:', str(result['thread_median_ms']) + 'ms'
@@ -126,8 +130,8 @@ def printResult(result):
   print
 
 
-connection = jaydebeapi.connect('org.h2.Driver', 'jdbc:h2:tcp://localhost/~/metrics', ['sa', ''], 'h2-1.4.196.jar')
 signal.signal(signal.SIGTSTP, handler)
+connection = jaydebeapi.connect('org.h2.Driver', 'jdbc:h2:tcp://localhost/~/metrics', ['sa', ''], 'h2-1.4.196.jar')
 results = OrderedDict()
 delta = timedelta(seconds = INTERVAL_SEC)
 
