@@ -6,7 +6,7 @@ from collections import OrderedDict
 from datetime import datetime, timedelta
 
 
-INTERVAL_SEC = 5
+INTERVAL_SEC = 60
 HISTORY_LENGTH = 100
 CSV_DIR = 'csvs'
 
@@ -84,7 +84,7 @@ def measureThreads(cursor, intervalStartTime, intervalEndTime):
 def measureResponses(cursor, intervalStartTime, intervalEndTime):
   cursor.execute("SELECT finished_at, duration_micro FROM requests where finished_at >= '" +
     str(intervalStartTime) + "' ORDER BY finished_at asc")
-  
+
   responseDurations = []
   for value in cursor.fetchall():
     finishedAt = parseDatetime(value[0])
