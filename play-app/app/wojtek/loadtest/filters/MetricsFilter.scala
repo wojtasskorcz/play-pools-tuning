@@ -1,6 +1,6 @@
 package wojtek.loadtest.filters
 
-import java.sql.Timestamp
+import java.sql.{SQLException, Timestamp}
 
 import akka.stream.Materializer
 import com.typesafe.scalalogging.LazyLogging
@@ -19,8 +19,13 @@ class MetricsFilter(implicit val mat: Materializer, implicit val ec: ExecutionCo
       result => {
         val durationMicro = (System.nanoTime() - requestStartTime) / 1000
         val finishedAt = new Timestamp(System.currentTimeMillis())
-        connection.prepareStatement(s"insert into requests (finished_at, duration_micro) " +
-          s"values ('$finishedAt', $durationMicro)").execute()
+
+        try {
+          connection.prepareStatement(s"insert into requests (finished_at, duration_micro) " +
+            s"values ('$finishedAt', $durationMicro)").execute()
+        } catch {
+          case e: SQLException => logger.error("Exception when saving measurement data. This data will be omitted.", e)
+        }
 
 //        logger.info(System.currentTimeMillis() + " request took " + durationMicro + "us")
         result

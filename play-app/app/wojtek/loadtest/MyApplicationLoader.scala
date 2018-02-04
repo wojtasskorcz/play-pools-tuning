@@ -16,6 +16,7 @@ class MyApplicationLoader extends ApplicationLoader {
       _.configure(context.environment, context.initialConfiguration, Map.empty)
     }
 
+    // Don't catch any exceptions here. If something fails it doesn't make any sense to continue running the app
     Server.createTcpServer("-tcpAllowOthers").start()
     Class.forName("org.h2.Driver")
     val conn = DbService.openConnection()
