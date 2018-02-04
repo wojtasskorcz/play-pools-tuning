@@ -25,7 +25,7 @@ Gatling scenarios can be adjusted in `gatling-test/src/test/scala/wojtek/loadtes
 
 ### Running a test
 
-1. Start the Play application from `play-app/` by running `sbt run`.
+1. Start the Play application from `play-app/` by running `sbt run`. You may want to manually send a single HTTP request to the app in order to force it to compile the code before proper testing.
 2. Start the metrics gathering script from `gatherer/` by running `./gatherer.py`.
 3. Start the Gatling simulation from `gatling-test/` by running `sbt 'gatling:testOnly *CpuSimulation'` or `sbt 'gatling:testOnly *WsSimulation'`
 
@@ -45,13 +45,13 @@ As we can see, and what was to be expected, running on 12 threads is faster than
 
 ![](https://github.com/wojtasskorcz/play-pools-tuning/blob/master/results/cpu-thread.png)
 
-This chart shows how long the execution of a pool thread took per each request. As we can see, for the 100-thread application, with the increase of the number of requests, their execution time increases around 20-fold. This is a clear sign that the pool threads lack underlying resources (system threads or CPU cores) to proceed and the pool should be shrank. In general, the pool itself should be throttling the number of simultaneously executing threads (forcing tasks to wait for a thread if necessary) in order to ensure that the threads execute in a timely and predictable manner. This desired behavior can be observed in the 12-thread application, where the execution time only doubles under heavy load as the thread forces tasks to wait for threads.
+This chart shows how long the execution of a pool thread took per each request. As we can see, for the 100-thread application, with the increase of the number of requests, their execution time increases around 20-fold. This is a clear sign that the pool threads lack underlying resources (system threads or CPU cores) to proceed and the pool should be shrank. In general, the pool itself should be throttling the number of simultaneously executing threads (forcing tasks to wait for a thread if necessary) in order to ensure that the threads execute in a timely and predictable manner. This desired behavior can be observed in the 12-thread application, where the execution time only doubles under heavy load as the pool itself forces tasks to wait for threads.
 
 ![](https://github.com/wojtasskorcz/play-pools-tuning/blob/master/results/cpu-waiting.png)
 
 As we can see here, under heavy load the more optimized pool forces its tasks to wait relatively longer. The difference between 90% and 98% may not seem very significant, but if we invert the meaning of the chart - how long did thread execution take in relation the the whole time a task was scheduled in a pool - the difference between 10% and 2% is five-fold.
 
-We've shown how the previous metrics can help predict when to scale down a CPU-heavy thread pool. If we want to check if scaling up is needed we can work with a reverse logic. Before, we checked if thread execution time was high (relatively to the baseline) and waiting ratio was low -- it meant that the pool was too big. On the other hand, if execution time stays relatively constant but waiting ratio keeps growin, it may be worth to try a bit bigger pool. In our case We could see if 18- or 24-thread pool would speed things up.
+We've shown how the previous metrics can help predict when to scale down a CPU-heavy thread pool. If we want to check if scaling up is needed we can work with a reverse logic. Before, we checked if thread execution time was high (relatively to the baseline) and waiting ratio was low -- it meant that the pool was too big. On the other hand, if execution time stays relatively constant but waiting ratio keeps growing, it may be worth to try a bit bigger pool. In our case We could see if 18- or 24-thread pool would speed things up.
 
 #### Second test: blocking requests
 
@@ -59,7 +59,7 @@ The need for scaling up a thread pool rarely arises in case of CPU-heavy request
 
 ![](https://github.com/wojtasskorcz/play-pools-tuning/blob/master/results/blocking-response.png)
 
-This time we first test a thread pool of 12 threads ([times]) as an example of bad configuration. Then, we show a thread pool of 100 threads ([times]). Here, when handling a request, we simulate a request to a downstream service that takes 500ms.
+This time we first test a thread pool of 12 threads (09:46:50 - 09:49:20) as an example of bad configuration. Then, we show a thread pool of 100 threads (09:49:40 - 09:52:10). Here, when handling a request, we simulate a request to a downstream service that takes 500ms.
 
 As we can see, for blocking operations the difference in response times between the test configurations is much more pronounced. The 100-thread application always responds within 500ms, whereas the 12-thread application takes up to 15s under heavy load. Fortunately, properly configuring a thread pool for blocking operations is relatively easy, because we usually can set the number of threads to the number of connections supported by the downstream database or web service. 
 
@@ -70,11 +70,11 @@ Such thread pools also make it quite easy to predict when we'll have to scale. I
 
 ![](https://github.com/wojtasskorcz/play-pools-tuning/blob/master/results/blocking-waiting.png)
 
-On the other hand, the charts we used previously only start to indicate the need for scaling up post factum. There's no way to tell that the pool is reaching its capacity from the waiting ratio because it only starts to show after the pool is already overloaded. The thread execution time metrics is ever less useful as the thread execution is not limited by the CPU and therefore always takes 500ms and doesn't show any signs of overload.
+On the other hand, the charts we used previously only start to indicate the need for scaling up post factum. There's no way to tell that the pool is reaching its capacity from the waiting ratio because it only starts to show after the pool is already overloaded. The thread execution time metrics is even less useful as the thread execution is not limited by the CPU and therefore always takes 500ms and doesn't show any signs of overload.
 
-Of course, in real life even with the pool waiting metrics we'll first have some indications of overload (e.g. occasional waiting ratios over 0% during 10s every minute) but in general the utilization metrics allows for much greater accuracy in our predictions.
+Of course, in real life even with the pool waiting ratio metrics or response time metrics we'll first have some indications of overload (e.g. occasional waiting ratios over 0% during 10s every minute) before things get totally out of hand. Nevertheless, in general the utilization metrics allows for much greater accuracy in our predictions.
 
 ### Known issues
-- delay in metrics collection in order to correctly compute utilization
-- sometimes utilization over its theoretical limits (eg. 1210% on a 12-thread pool)
-- no thread pool used in the play app because it's difficult (most likely impossible) to inject it into an custom `ThreadPoolExecutor`
+- In order to ensure correct computation of pool utilization, metrics are collected with a delay of one measurement interval. That means, if the interval is one minute and the metrics script fires at 13:20:15, it will collect the metrics for the interval 13:18:00 - 13:19:00. The logic behind it is that some threads that were started within this interval (and therefore contributed to the utilization) might have ended after 13:19:00 and wouldn't be accounted for without the delay.
+- In some of the intervals it's possible to see the pool utilization metrics exceeding its theoretical limits. For example, in the CPU test at 17:02:40 there's a 1207% utilization of the pool of 12 threads. I couldn't quite figure out what causes this anomaly because it only shows under heavy load when the amount of logged thread execution times is too big to be analyzed manually. This problem should be possible to debug by analyzing the logs with a dedicated script.
+- The raw measurements are saved in H2 database for later aggregation by the gatherer script. Usually in such scenarios a DB connection pool would be used, but here it was very difficult (or probably impossible) and therefore pooling of the DB connections is implemented manually (e.g. by storing them in local variables). The reason is that the `InstrumentedThreadPoolExecutor` (which is the main point of measurement) is instantiated before the Play application loader (which is the point of instantiating services, connection pools, etc.) starts.
